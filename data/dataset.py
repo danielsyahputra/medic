@@ -3,8 +3,7 @@ import pandas as pd
 from PIL import Image
 from torch.utils.data import Dataset
 from torchvision.transforms import transforms
-from typing import Iterable
-
+from typing import Iterable, Tuple
 
 class MedicDataset(Dataset):
     def __init__(self, file_path: str, images_dir: str, tasks: Iterable, transform: transforms.Compose = None) -> None:
@@ -28,13 +27,13 @@ class MedicDataset(Dataset):
         #                 {"informative": 0, "not_informative": 1},
         #                 {.....}, ....]
         # len(class_indices) == len(self.tasks)
-        self.all_targets = []
+        self.targets = []
         num_images = len(self.labels[0])
         for image_idx in range(num_images):
-            targets = []
+            target = []
             for task_idx in range(len(self.tasks)):
-                targets.append(self.class_indices[task_idx][self.labels[task_idx][image_idx]])
-            self.all_targets.append(targets)
+                target.append(self.class_indices[task_idx][self.labels[task_idx][image_idx]])
+            self.targets.append(target)
 
     @staticmethod
     def _find_classes(classes):
@@ -46,3 +45,13 @@ class MedicDataset(Dataset):
         else:
             class_idx = {classes[i]: i for i in range(len(classes))}
         return class_idx
+
+    def __getitem__(self, index) -> Tuple:
+        path, target = self.image_paths[index], self.targets[index]
+        f = open(os.path.join(self.images_dir, path), "rb")
+        img = Image.open(f)
+        if img.mode is not "RGB":
+            img = img.convert("RGB")
+        if self.transform is not None:
+            img = self.transform(img)
+        return img, target
